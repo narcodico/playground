@@ -1,190 +1,49 @@
-import 'dart:developer';
-
-import 'package:equatable/equatable.dart';
-import 'package:flow_builder/flow_builder.dart';
 import 'package:flutter/material.dart';
-
-List<Page> onGenerateProfilePages(Profile profile, List<Page> pages) {
-  return [
-    const MaterialPage<void>(child: ProfileNameForm(), name: '/profile'),
-    if (profile.name != null) const MaterialPage<void>(child: ProfileAgeForm()),
-    if (profile.age != null)
-      const MaterialPage<void>(child: ProfileWeightForm()),
-  ];
-}
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:playground/app/cubit/app_cubit.dart';
+import 'package:playground/profile/view/profile.dart';
+import 'package:playground/repository/repository.dart';
+import 'package:provider/provider.dart';
 
 class App extends StatelessWidget {
   const App({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: FlowBuilder<Profile>(
-        state: Profile(),
-        onGeneratePages: onGenerateProfilePages,
+    return BlocProvider(
+      create: (context) => AppCubit(),
+      child: ProxyProvider<AppCubit, Repository>(
+        update: (context, newAppCubit, previousRepository) =>
+            Repository(newAppCubit.state.environment.name),
+        child: MaterialApp(
+          home: Home(),
+        ),
       ),
     );
   }
 }
 
-class ProfileNameForm extends StatefulWidget {
-  const ProfileNameForm({super.key});
-
-  @override
-  State<ProfileNameForm> createState() => _ProfileNameFormState();
-}
-
-class _ProfileNameFormState extends State<ProfileNameForm> {
-  var _name = '';
-
-  void _continuePressed() {
-    context.flow<Profile>().update((profile) => profile.copyWith(name: _name));
-  }
+class Home extends StatelessWidget {
+  const Home({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: BackButton(
-          onPressed: () => context.flow<Profile>().complete(),
+        title: BlocBuilder<AppCubit, AppState>(
+          builder: (context, state) {
+            return Text(state.environment.name);
+          },
         ),
-        title: const Text('Name'),
       ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: <Widget>[
-              TextField(
-                onChanged: (value) => setState(() => _name = value),
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                  hintText: 'John Doe',
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _name.isNotEmpty ? _continuePressed : null,
-                child: const Text('Continue'),
-              )
-            ],
-          ),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        label: Text('Go to profile'),
+        onPressed: () {
+          Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => Profile(),
+          ));
+        },
       ),
     );
   }
-}
-
-class ProfileAgeForm extends StatefulWidget {
-  const ProfileAgeForm({super.key});
-
-  @override
-  State<ProfileAgeForm> createState() => _ProfileAgeFormState();
-}
-
-class _ProfileAgeFormState extends State<ProfileAgeForm> {
-  int? _age;
-
-  void _continuePressed() {
-    context.flow<Profile>().update((profile) => profile.copyWith(age: _age));
-  }
-
-  @override
-  void initState() {
-    log('initState');
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Age')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: <Widget>[
-              TextField(
-                onChanged: (value) => setState(() => _age = int.parse(value)),
-                decoration: const InputDecoration(
-                  labelText: 'Age',
-                  hintText: '42',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              ElevatedButton(
-                onPressed: _age != null ? _continuePressed : null,
-                child: const Text('Continue'),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class ProfileWeightForm extends StatefulWidget {
-  const ProfileWeightForm({super.key});
-
-  @override
-  State<ProfileWeightForm> createState() => _ProfileWeightFormState();
-}
-
-class _ProfileWeightFormState extends State<ProfileWeightForm> {
-  int? _weight;
-
-  void _continuePressed() {
-    context
-        .flow<Profile>()
-        .complete((profile) => profile.copyWith(weight: _weight));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Weight')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: <Widget>[
-              TextField(
-                onChanged: (value) {
-                  setState(() => _weight = int.tryParse(value));
-                },
-                decoration: const InputDecoration(
-                  labelText: 'Weight (lbs)',
-                  hintText: '170',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              ElevatedButton(
-                onPressed: _weight != null ? _continuePressed : null,
-                child: const Text('Continue'),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class Profile extends Equatable {
-  const Profile({this.name, this.age, this.weight});
-
-  final String? name;
-  final int? age;
-  final int? weight;
-
-  Profile copyWith({String? name, int? age, int? weight}) {
-    return Profile(
-      name: name ?? this.name,
-      age: age ?? this.age,
-      weight: weight ?? this.weight,
-    );
-  }
-
-  @override
-  List<Object?> get props => [name, age, weight];
 }
